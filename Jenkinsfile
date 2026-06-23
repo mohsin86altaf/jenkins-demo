@@ -1,8 +1,6 @@
 pipeline {
     agent any
-    tools {
-        nodejs 'Node26'
-    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -30,6 +28,7 @@ pipeline {
             }
         }
     }
+
     post {
         success {
             echo 'Pipeline completed successfully!'
