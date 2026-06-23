@@ -1,11 +1,11 @@
 pipeline {
     agent any
-    environment {
-        DOCKER_IMAGE = 'mohsinaltaf1/myapp'	
 
-/jenkins-demo'
-        IMAGE_TAG = "${BUILD_NUMBER}"
+    environment {
+        DOCKER_IMAGE = 'mohsinaltaf1/myapp'
+        DOCKER_TAG   = "${env.BUILD_NUMBER}"
     }
+
     stages {
         stage('Checkout') {
             steps {
@@ -16,6 +16,7 @@ pipeline {
             steps {
                 echo 'Building...'
                 sh 'node --version'
+                sh 'npm --version'
             }
         }
         stage('Test') {
@@ -25,32 +26,32 @@ pipeline {
         }
         stage('Docker Build') {
             steps {
-                sh 'docker build -t $DOCKER_IMAGE:$IMAGE_TAG .'
-                sh 'docker tag $DOCKER_IMAGE:$IMAGE_TAG $DOCKER_IMAGE:latest'
+                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
             }
         }
-        stage('Push to Hub') {
+        stage('Push to DockerHub') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh 'docker login -u $DOCKER_USER -p $DOCKER_PASS'
-                    sh 'docker push $DOCKER_IMAGE:$IMAGE_TAG'
-                    sh 'docker push $DOCKER_IMAGE:latest'
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
                 }
             }
         }
         stage('Deploy') {
             steps {
-                sh 'docker stop jenkins-demo || true'
-                sh 'docker rm jenkins-demo || true'
-                sh 'docker pull $DOCKER_IMAGE:latest'
-                sh 'docker run -d -p 3000:3000 --name jenkins-demo $DOCKER_IMAGE:latest'
-                echo 'App live at localhost:3000!'
+                sh "docker stop myapp || true"
+                sh "docker rm myapp || true"
+                sh "docker run -d --name myapp -p 3000:3000 ${DOCKER_IMAGE}:${DOCKER_TAG}"
             }
         }
     }
+
     post {
-        success { echo 'Pipeline complete!' }
-        failure { echo 'Check logs!' }
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
     }
 }
